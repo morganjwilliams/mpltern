@@ -403,8 +403,20 @@ class TernaryAxesBase(Axes):
         bbox.update_from_data_xy(points, ignore=True)
         return bbox
 
-    def set_ternary_lim(self, tmin, tmax, lmin, lmax, rmin, rmax, *args, **kwargs):
+    def set_ternary_lim(self, tmin, tmax, lmin, lmax, rmin, rmax):
         """
+        Set the ternary-axes view limits.
+
+        Parameters
+        ----------
+        tmin, tmax : float
+            The lower and the upper bounds for the `t` axis.
+
+        lmin, lmax : float
+            The lower and the upper bounds for the `l` axis.
+
+        rmin, rmax : float
+            The lower and the upper bounds for the `r` axis.
 
         Notes
         -----
@@ -437,19 +449,19 @@ class TernaryAxesBase(Axes):
         self.set_xlim(xmin, xmax)
         self.set_ylim(ymin, ymax)
 
-    def set_ternary_min(self, tmin, lmin, rmin, *args, **kwargs):
+    def set_ternary_min(self, tmin, lmin, rmin):
         s = self.ternary_scale
         tmax = s - lmin - rmin
         lmax = s - rmin - tmin
         rmax = s - tmin - lmin
-        self.set_ternary_lim(tmin, tmax, lmin, lmax, rmin, rmax, *args, **kwargs)
+        self.set_ternary_lim(tmin, tmax, lmin, lmax, rmin, rmax)
 
-    def set_ternary_max(self, tmax, lmax, rmax, *args, **kwargs):
+    def set_ternary_max(self, tmax, lmax, rmax):
         s = self.ternary_scale
         tmin = (s + tmax - lmax - rmax) * 0.5
         lmin = (s + lmax - rmax - tmax) * 0.5
         rmin = (s + rmax - tmax - lmax) * 0.5
-        self.set_ternary_lim(tmin, tmax, lmin, lmax, rmin, rmax, *args, **kwargs)
+        self.set_ternary_lim(tmin, tmax, lmin, lmax, rmin, rmax)
 
     def get_tlim(self):
         return tuple(self.viewTLim.intervalx)
