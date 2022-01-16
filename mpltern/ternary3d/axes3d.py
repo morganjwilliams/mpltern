@@ -32,6 +32,13 @@ class TernaryAxes3D(Axes3D):
 
         super().__init__(*args, **kwargs)
 
+        # As of Matplotlib 3.5.0, Axes3D does not support `set_aspect` other
+        # than `auto` and therefore we need (1) to set the box aspect and the
+        # data limits consistently.
+        self.set_box_aspect((8.0 / np.sqrt(3.0), 4.0, 3.0))
+        self.set_ternary_lim(
+            0.0, ternary_scale, 0.0, ternary_scale, 0.0, ternary_scale)
+
     def _set_lim_and_transforms(self):
         super()._set_lim_and_transforms()
         transTernaryScale = TernaryScaleTransform(self.ternary_scale)
@@ -72,6 +79,110 @@ class TernaryAxes3D(Axes3D):
 
         # From barycentric coordinates to display coordinates
         self.transTernaryAxes = self.transAxesProjection + self.transAxes
+
+    def cla(self):
+        self.set_tlim(0.0, self.ternary_scale)
+        self.set_llim(0.0, self.ternary_scale)
+        self.set_rlim(0.0, self.ternary_scale)
+        super().cla()
+        xmin = -1.0 / np.sqrt(3.0)
+        xmax = +1.0 / np.sqrt(3.0)
+        self.set_xlim(xmin, xmax)
+        self.set_ylim(0.0, 1.0)
+
+    def _create_bbox_from_ternary_lim(self):
+        tmin, tmax = self.get_tlim()
+        lmin, lmax = self.get_llim()
+        rmin, rmax = self.get_rlim()
+        points = [[tmax, lmin, rmin], [tmin, lmax, rmin], [tmin, lmin, rmax]]
+        points = self.transProjection.transform(points)
+        bbox = mtransforms.Bbox.unit()
+        bbox.update_from_data_xy(points, ignore=True)
+        return bbox
+
+    def set_ternary_lim(self, tmin, tmax, lmin, lmax, rmin, rmax):
+        """
+        Set the ternary-axes view limits.
+
+        Parameters
+        ----------
+        tmin, tmax : float
+            The lower and the upper bounds for the `t` axis.
+
+        lmin, lmax : float
+            The lower and the upper bounds for the `l` axis.
+
+        rmin, rmax : float
+            The lower and the upper bounds for the `r` axis.
+
+        Notes
+        -----
+        xmin, xmax : holizontal limits of the triangle
+        ymin, ymax : bottom and top of the triangle
+        """
+        t = tmax + lmin + rmin
+        l = tmin + lmax + rmin
+        r = tmin + lmin + rmax
+        s = self.ternary_scale
+        tol = 1e-12
+        if (abs(t - s) > tol) or (abs(l - s) > tol) or (abs(r - s) > tol):
+            raise ValueError(t, l, r, s)
+
+        boxin = self._create_bbox_from_ternary_lim()
+
+        self.set_tlim(tmin, tmax)
+        self.set_llim(lmin, lmax)
+        self.set_rlim(rmin, rmax)
+
+        boxout = self._create_bbox_from_ternary_lim()
+
+        trans = mtransforms.BboxTransform(boxin, boxout)
+
+        xmin, xmax = self.get_xlim3d()
+        ymin, ymax = self.get_ylim3d()
+        points = [[xmin, ymin], [xmax, ymax]]
+        ((xmin, ymin), (xmax, ymax)) = trans.transform(points)
+
+        self.set_xlim3d(xmin, xmax)
+        self.set_ylim3d(ymin, ymax)
+
+    def set_ternary_min(self, tmin, lmin, rmin):
+        s = self.ternary_scale
+        tmax = s - lmin - rmin
+        lmax = s - rmin - tmin
+        rmax = s - tmin - lmin
+        self.set_ternary_lim(tmin, tmax, lmin, lmax, rmin, rmax)
+
+    def set_ternary_max(self, tmax, lmax, rmax):
+        s = self.ternary_scale
+        tmin = (s + tmax - lmax - rmax) * 0.5
+        lmin = (s + lmax - rmax - tmax) * 0.5
+        rmin = (s + rmax - tmax - lmax) * 0.5
+        self.set_ternary_lim(tmin, tmax, lmin, lmax, rmin, rmax)
+
+    def get_tlim(self):
+        return tuple(self.viewTLim.intervalx)
+
+    def get_llim(self):
+        return tuple(self.viewLLim.intervalx)
+
+    def get_rlim(self):
+        return tuple(self.viewRLim.intervalx)
+
+    def set_tlim(self, tmin, tmax):
+        self.viewTLim.intervalx = (tmin, tmax)
+        self.stale = True
+        return tmin, tmax
+
+    def set_llim(self, lmin, lmax):
+        self.viewLLim.intervalx = (lmin, lmax)
+        self.stale = True
+        return lmin, lmax
+
+    def set_rlim(self, rmin, rmax):
+        self.viewRLim.intervalx = (rmin, rmax)
+        self.stale = True
+        return rmin, rmax
 
     def plot(self, *args, **kwargs):
         trans = kwargs.pop('transform', None)
